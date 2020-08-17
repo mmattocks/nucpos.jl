@@ -1,13 +1,13 @@
 module nucpos
 
-using DataFrames, BGHMM, BioSequences, CSV
+using DataFrames, BioBackgroundModels, CSV, FASTX
 
 function add_position_sequences!(df::DataFrame, genome_path::String, genome_idx_path::String)
-    scaffold_seq_record_dict::Dict{String,DNASequence} = BGHMM.build_scaffold_seq_dict(genome_path, genome_idx_path)
+    scaffold_seq_record_dict::Dict{String,DNASequence} = BioBackgroundModels.build_scaffold_seq_dict(genome_path, genome_idx_path)
 
     seqs=Vector{DNASequence}()
     for entry in eachrow(df)
-        push!(seqs, BGHMM.fetch_sequence(entry.chr, scaffold_seq_record_dict ,entry.start, entry.end, '+'))
+        push!(seqs, BioBackgroundModels.fetch_sequence(entry.chr, scaffold_seq_record_dict ,entry.start, entry.end, '+'))
     end
 
     df[!, :seq] .= seqs
@@ -18,13 +18,13 @@ function get_cluster!(df::DataFrame, fasta::String, arch::String)
     art=CSV.read(arch, header=0)
 
     position_vec=Vector{Vector{Int64}}()
-    reader=BioSequences.FASTA.Reader(open(fasta))
+    reader=FASTA.Reader(open(fasta))
     for (n, entry) in enumerate(reader)
-        scaffold = BioSequences.FASTA.identifier(entry)
-        desc_array = split(BioSequences.FASTA.description(entry))
+        scaffold = FASTA.identifier(entry)
+        desc_array = split(FASTA.description(entry))
         pos_start = parse(Int64, desc_array[2])
         pos_end = parse(Int64, desc_array[4])
-        seq = BioSequences.FASTA.sequence(entry)
+        seq = FASTA.sequence(entry)
 
         idx = filter(in(findall(chr->chr==scaffold, df.chr)), findall(start->start==pos_start, df.start))
 
@@ -39,17 +39,17 @@ end
 
 
 function make_position_df(position_fasta::String)
-    position_reader = BioSequences.FASTA.Reader(open((position_fasta),"r"))
-    position_df = DataFrame(SeqID = String[], Start=Int64[], End=Int64[], Seq = DNASequence[])
+    position_reader = FASTA.Reader(open((position_fasta),"r"))
+    position_df = DataFrame(SeqID = String[], Start=Int64[], End=Int64[], Seq = LongSequence[])
 
     for entry in position_reader
-        scaffold = BioSequences.FASTA.identifier(entry)
+        scaffold = FASTA.identifier(entry)
 
         if scaffold != "MT"
-            desc_array = split(BioSequences.FASTA.description(entry))
+            desc_array = split(FASTA.description(entry))
             pos_start = parse(Int64, desc_array[2])
             pos_end = parse(Int64, desc_array[4])
-            seq = BioSequences.FASTA.sequence(entry)
+            seq = FASTA.sequence(entry)
 
             if !hasambiguity(seq)
                 push!(position_df, [scaffold, pos_start, pos_end, seq])
@@ -62,8 +62,8 @@ function make_position_df(position_fasta::String)
 end
 
 function observation_setup(position_df::DataFrame; order::Int64=0, symbol::Symbol=:Seq)
-    order_seqs = BGHMM.get_order_n_seqs(position_df[!, symbol], order)
-    coded_seqs = BGHMM.code_seqs(order_seqs)
+    order_seqs = BioBackgroundModels.get_order_n_seqs(position_df[!, symbol], order)
+    coded_seqs = BioBackgroundModels.code_seqs(order_seqs)
 
     return coded_seqs
 end
