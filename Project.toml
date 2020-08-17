@@ -4,9 +4,8 @@ authors = ["Michael Mattocks <mike.mattocks@utoronto.ca>"]
 version = "0.1.0"
 
 [deps]
-BGHMM = "986cace0-858e-11e9-0c21-a3f77cb47671"
+BioBackgroundModels = "71d2fffc-6959-458e-9716-bd512c1bc899"
 BioSequences = "7e6ae17a-c86d-528c-b3b9-7f778a29fe59"
-CLHMM = "50393821-5328-4e9b-b13d-f3f5dbde8b0c"
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
-MS_HMMBase = "f5650aa0-5f46-11e9-253e-a98edbbd51a5"
+FASTX = "c2308a5c-f048-11e8-3e8a-31650f418d12"

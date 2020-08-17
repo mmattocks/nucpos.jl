@@ -1,16 +1,17 @@
 module nucpos
 
-using DataFrames, BioBackgroundModels, CSV, FASTX
+using DataFrames, BioSequences, BioBackgroundModels, CSV, FASTX
 
 function add_position_sequences!(df::DataFrame, genome_path::String, genome_idx_path::String)
-    scaffold_seq_record_dict::Dict{String,DNASequence} = BioBackgroundModels.build_scaffold_seq_dict(genome_path, genome_idx_path)
+    scaffold_seq_record_dict::Dict{String,BioSequences.LongSequence} = BioBackgroundModels.build_scaffold_seq_dict(genome_path, genome_idx_path)
 
-    seqs=Vector{DNASequence}()
-    for entry in eachrow(df)
-        push!(seqs, BioBackgroundModels.fetch_sequence(entry.chr, scaffold_seq_record_dict ,entry.start, entry.end, '+'))
+    seqs=[BioSequences.LongSequence{DNAAlphabet{4}}() for i in 1:size(df,1)]
+    df[!, :seq] .= seqs
+
+    Threads.@threads for entry in eachrow(df)
+        entry.seq=BioBackgroundModels.fetch_sequence(entry.chr, scaffold_seq_record_dict ,entry.start, entry.end, '+')
     end
 
-    df[!, :seq] .= seqs
 end
 
 function get_cluster!(df::DataFrame, fasta::String, arch::String)
@@ -62,7 +63,7 @@ function make_position_df(position_fasta::String)
 end
 
 function observation_setup(position_df::DataFrame; order::Int64=0, symbol::Symbol=:Seq)
-    order_seqs = BioBackgroundModels.get_order_n_seqs(position_df[!, symbol], order)
+    order_seqs = BioBackgroundModels.get_order_n_seqs(Vector{LongSequence{DNAAlphabet{2}}}(position_df[!, symbol]),order)
     coded_seqs = BioBackgroundModels.code_seqs(order_seqs)
 
     return coded_seqs
@@ -92,7 +93,7 @@ function map_positions!(base_df, map_df)
 end
 
                 function subDFmap!(chr_df::SubDataFrame, map_chr_df::SubDataFrame)
-                    for position in eachrow(chr_df)
+                    Threads.@threads for position in eachrow(chr_df)
                         search_start = position.start; search_end=position.end
                         start_idxs=findall(in(findall(ende->search_start<=ende,map_chr_df.end)), findall(start->search_start>=start,map_chr_df.start))
                         end_idxs=findall(in(findall(ende->search_end<=ende,map_chr_df.end)), findall(start->search_end>=start,map_chr_df.start))
